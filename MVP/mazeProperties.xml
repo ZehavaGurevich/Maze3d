@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<java version="1.8.0_101" class="java.beans.XMLDecoder">
+ <object class="presenter.Properties">
+  <void property="algo">
+   <string>BFS</string>
+  </void>
+  <void property="mazeName">
+   <string>My maze</string>
+  </void>
+  <void property="numOfThreads">
+   <int>10</int>
+  </void>
+  <void property="viewType">
+   <string>gui</string>
+  </void>
+  <void property="x">
+   <int>2</int>
+  </void>
+  <void property="y">
+   <int>5</int>
+  </void>
+  <void property="z">
+   <int>7</int>
+  </void>
+ </object>
+</java>

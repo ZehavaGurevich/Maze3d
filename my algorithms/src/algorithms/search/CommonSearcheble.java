@@ -2,8 +2,6 @@ package algorithms.search;
 
 import java.util.ArrayList;
 
-import algorithms.mazeGenerators.Position;
-
 
 /**
  * The Class CommonSearchable.

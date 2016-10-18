@@ -25,6 +25,10 @@ public class BFSsearcher<T> extends CommonSearcher<T>
 	@Override
 	public SearchSolution<T> Search(Searcheble<T> s)
 	{
+		if(s==null)
+		{
+			return null;
+		}
 
 		State<T> n; 
 		AddToPriorityQueue(s.getStartState());

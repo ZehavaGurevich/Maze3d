@@ -8,7 +8,9 @@ import java.util.HashMap;
 import java.util.Observable;
 import java.util.Scanner;
 
+import algorithms.mazeGenerators.Maze3d;
 import presenter.Command;
+import presenter.Properties;
 
 
 public class CliView extends Observable implements View 
@@ -67,7 +69,14 @@ public class CliView extends Observable implements View
 	}
 
 
+//!!!!!!!!!!!!!!!!!!!!!!
+	public void executeCommand(String string){
 
+		setChanged();
+		notifyObservers(string);
+
+	}
+	//!!!!!!!!!!!!!!!!!!!!!!!!
 
 	public void ViewPrintMsg(String msg)
 	{
@@ -118,13 +127,7 @@ public class CliView extends Observable implements View
 	{
 		this.out = out;
 	}
-
-	@Override
-	public void ViewSendCommand(HashMap<String, Command> commands) {
-		// TODO Auto-generated method stub
-		
-	}
-
+	
 	@Override
 	public void ViewGenerateMaze3d(String str) {
 		// TODO Auto-generated method stub
@@ -132,10 +135,24 @@ public class CliView extends Observable implements View
 	}
 
 	@Override
-	public void ViewDisplayAllMaze(byte[] maze) {
-		// TODO Auto-generated method stub
+	public void ViewDisplayAllMaze(byte[] maze)
+	{
+		Maze3d myMaze=new Maze3d(maze);
+		for(int i=0;i<myMaze.getP().getX();i++){
+			for(int j=0;j<myMaze.getP().getY();j++){
+				for(int k=0;k<myMaze.getP().getZ();k++)
+				{
+					System.out.print(myMaze.getCell(i,j,k)+" ");
+				}
+				System.out.println();
+			}
+			System.out.println();
+		}
+		System.out.println("\nstart: "+myMaze.getStartPosition().toString()+"\ngoal: "+myMaze.getGoalPosition().toString());
 		
+
 	}
+	
 
 	@Override
 	public void ViewDisplayCrossSectionBy(int[][] Maze2d) {
@@ -143,14 +160,16 @@ public class CliView extends Observable implements View
 		
 	}
 
+
+
 	@Override
-	public void ViewSaveMaze(String str) {
+	public void ViewExit() {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void ViewExit() {
+	public void ResetProp(Properties p) {
 		// TODO Auto-generated method stub
 		
 	}

@@ -6,38 +6,47 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Observable;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import algorithms.demo.MazeDomain;
 import algorithms.mazeGenerators.GrowingTreeGenerator;
 import algorithms.mazeGenerators.Maze3d;
 import algorithms.mazeGenerators.Position;
+import algorithms.mazeGenerators.SimpleMaze3dGenerator;
 import algorithms.mazeGenerators.StackPop;
 import algorithms.search.BFSsearcher;
 import algorithms.search.DFSsearcher;
 import algorithms.search.SearchSolution;
 import algorithms.search.Searcheble;
 import algorithms.search.Searcher;
-import algorithms.search.Solution;
 import io.MyCompressorOutputStream;
 import io.MyDecompressorInputStream;
-import presenter.Command;
+import presenter.Properties;
 
 public class MyModel extends Observable implements Model 
 {
 
-	Maze3d maze;
 
 	private HashMap<String, Maze3d> myMazes;
 
-	private HashMap<String, SearchSolution<Position>> solutions;
+	private HashMap<Maze3d, SearchSolution<Position>> solutions;
 
-	private ArrayList<Thread> threads;
+
+
+	//private ArrayList<Thread> threads;
 
 	private ArrayList<File> files;
 
@@ -46,58 +55,106 @@ public class MyModel extends Observable implements Model
 	ExecutorService threadPool;
 
 
+
 	public MyModel()
 	{
 		this.myMazes=new HashMap<String,Maze3d>();
-		this.solutions=new HashMap<String,SearchSolution<Position>>();
-		this.threads=new ArrayList<Thread>();
+		this.solutions=new HashMap<Maze3d,SearchSolution<Position>>();
+		this.loadSolutionZip();
+		//this.threads=new ArrayList<Thread>();
 		this.files=new ArrayList<File>();
 		this.stringBuilder=new StringBuilder();
-
+		//threadPool=Executors.newFixedThreadPool(Properties.getNumOfThreads());
 		threadPool = Executors.newFixedThreadPool(10);
 	}
 
+	public void saveSolutionZip()
+	{
+		if(solutions.isEmpty())
+		{
+			System.out.println("No solution for saving\n");
+			return;
+		}
+		try {
+			ObjectOutputStream out=new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream("solutoins.zip")));
+			out.writeObject(solutions);
+			out.close();
 
+		} catch (FileNotFoundException e) 
+		{
+			System.out.println("file not found\n");
 
-	@Override
-	public void ModelDir(String path) {
-		// TODO Auto-generated method stub
+		} catch (IOException e)
+		{
+			System.out.println(e.getMessage());
+			System.out.println("save solution to zip is faild");
+
+		}
+
 
 	}
+	
+	@SuppressWarnings("unchecked")
+	public void loadSolutionZip()
+	{
+		try {
+			ObjectInputStream in= new ObjectInputStream(new GZIPInputStream(new FileInputStream("solutoins.zip")));
+			solutions=((HashMap<Maze3d, SearchSolution<Position>>) in.readObject());
+			in.close();
+		} catch (FileNotFoundException e) 
+		{
+			System.out.println("file not found\n");
+		
+		} catch (IOException |ClassNotFoundException e) 
+		{
+		System.out.println(e.getMessage());
+			//System.out.println("load solution from zip is faild");
+		}	
+		
+	}
+	@Override
+	public void ModelDir(String path) {}
 
 
 	@Override
 	public void ModelGenerateMaze3d(String mazeName, int x, int y, int z)
 	{
-		Thread thread=new Thread(new Runnable() {
+		if(myMazes.containsKey(mazeName))
+		{
+			setChanged();
+			notifyObservers("Name already exist\n");
+			return;
+		}
 
+		Future<Maze3d> fMaze = threadPool.submit(new Callable<Maze3d>()
+		{
 			@Override
-			public void run() 
-			{
-				if(myMazes.containsKey(mazeName))
-				{
-					setChanged();
-					notifyObservers("Name already exist\n");
-					return ;
-				}
-				else
-				{
-					Position p=new Position(x,y,z);
-					Maze3d maze=new Maze3d(p);
+			public Maze3d call() throws Exception {
 
-					maze=new GrowingTreeGenerator(new StackPop()).generate(p);
+				Position p=new Position(x,y,z);
+				Maze3d maze=new Maze3d(p);
 
-					myMazes.put(mazeName, maze);
-					setChanged();
-					notifyObservers("maze "+ mazeName+ " is ready\n");
-				}
+				//maze=new GrowingTreeGenerator(new StackPop()).generate(p);
+				maze=new SimpleMaze3dGenerator().generate(p);
+
+				return maze;
 			}
 		});
-		thread.start();
-		threads.add(thread);
 
 
+		try
+		{
+			myMazes.put(mazeName, fMaze.get());
+		} 
+		catch (InterruptedException | ExecutionException e)
+		{
+			setChanged();
+			notifyObservers(e.getMessage());				
+		}
+		setChanged();
+		notifyObservers("maze is ready");
 	}
+
 
 
 	@Override
@@ -111,9 +168,8 @@ public class MyModel extends Observable implements Model
 		}	
 		else{
 			Maze3d maze= myMazes.get(mazeName);
-			maze.printMaze3d();
-
-
+			setChanged();
+			notifyObservers(maze.toByteArray());
 		}
 
 	}
@@ -237,72 +293,69 @@ public class MyModel extends Observable implements Model
 
 
 
-
-	@Override
-	public void ModelMzeSize(String mazeName) {
-		// TODO Auto-generated method stub
-
-	}
-
-
-	@Override
-	public void ModelFileSize(String fileName) {
-		// TODO Auto-generated method stub
-
-	}
-
-
 	@Override
 	public void ModelSolve(String mazeName, String algorithm) 
 	{
-		Thread thread=new Thread(new Runnable()
+		if(!myMazes.containsKey(mazeName))
 		{
+			setChanged();
+			notifyObservers("There is no maze with this name");
+			return;
+		}
 
+		//check if solution is already exist
+		if(solutions.containsKey(myMazes.get(mazeName)))
+		{
+			setChanged();
+			notifyObservers("The solutin for maze "+ mazeName+ " is ready!!!!\n");
+			return ;
+		}
+
+		Future<SearchSolution<Position>> fSolution = threadPool.submit(new Callable<SearchSolution<Position>>()
+		{
 			@Override
-			public void run() 
+			public SearchSolution<Position> call() throws Exception
 			{
 				Maze3d maze=myMazes.get(mazeName);
 				Searcheble<Position> algoSearch= new MazeDomain(maze);
 
-				if(maze==null)
+				Searcher<Position> myAlgo;
+				SearchSolution<Position> sol;
+
+
+				switch(algorithm)
 				{
+				case "BFS":
+					myAlgo = new BFSsearcher<Position>();
+					break;
+
+				case "DFS":
+					myAlgo=new DFSsearcher<Position>();
+					break;
+
+				default:
 					setChanged();
-					notifyObservers("There is no maze with this name");
-				}
-
-				else{
-
-					Searcher<Position> myAlgo;
-
-
-					switch(algorithm)
-					{
-					case "BFS":
-						myAlgo = new BFSsearcher<Position>();
-						break;
-
-					case "DFS":
-						myAlgo=new DFSsearcher<Position>();
-						break;
-
-					default:
-						setChanged();
-						notifyObservers("There is no such algorithms");
-						return;
-
-					}
-
-					setChanged();
-					notifyObservers("The solutin for maze "+ mazeName+ " is ready\n");
-					solutions.put(mazeName, myAlgo.Search(algoSearch));
+					notifyObservers("There is no such algorithms");
+					return null;
 
 				}
-
+				sol=myAlgo.Search(algoSearch);
+				return sol;
 			}
-		});thread.start();
+		});
 
-		threads.add(thread);
+		try
+		{
+			solutions.put(myMazes.get(mazeName), fSolution.get());
+		} 
+		catch (InterruptedException | ExecutionException e)
+		{
+			setChanged();
+			notifyObservers(e.getMessage());
+		}
 
+		setChanged();
+		notifyObservers("The solutin for maze "+ mazeName+ " is ready\n");
 	}
 
 
@@ -312,13 +365,13 @@ public class MyModel extends Observable implements Model
 	public void ModelDisplaySolution(String mazeName)
 	{
 		// get solution from hashMap by key (name).
-		SearchSolution<Position> mySolution = solutions.get(mazeName);
-		if (mySolution == null)
+		if (!solutions.containsKey(myMazes.get(mazeName)))
 		{
 			setChanged();
-		notifyObservers("Solution for " + mazeName + " is not exist");
+			notifyObservers("Solution for " + mazeName + " is not exist");
 		}
-		else {
+		else{
+			SearchSolution<Position> mySolution = solutions.get(myMazes.get(mazeName));
 			// temp arrayList to get the solution.
 			ArrayList<Position> arraySolution = mySolution.getSolution();
 			// concat all solution steps.
@@ -336,23 +389,95 @@ public class MyModel extends Observable implements Model
 	public void ModelExit() 
 	{
 
-		for(int i=0;i<this.threads.size();i++){
-			if(this.threads.get(i)!=null){
-				//ask about remove.
-				this.threads.remove(i);
-			}
-
+		threadPool.shutdown();
+		saveSolutionZip();
+		try
+		{
+		while(!(threadPool.awaitTermination(10, TimeUnit.SECONDS)));
 		}
 
-		for(int j=0;j<this.files.size();j++){
-			if(this.files.get(j)!=null){
-				this.files.remove(j);
-
-			}
+		catch (InterruptedException e)
+		{
+		System.out.println("exit failed");
 		}
 
 
 
+	}
+	
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	//This function is checking if we can move up.
+		@Override
+		public void m_moveUp() {
+			Maze3d maze=this.m_currentMaze.getCurrentMaze();
+			Position p=this.m_currentMaze.getCurrentPosition();
+			String [] moves=maze.getPossibleMoves(p);
+			for(String move:moves){
+				if(move.equals("Up")){
+					Position temp=new Position(p.getX()+2,p.getY(),p.getZ());
+					this.m_currentMaze.setCurrentPosition(temp);
+					setChanged();
+					notifyObservers("move");
+				}
+			}
+			
+		}
+		//!!!!!!!!!!!!!!!!!!!!!!1
+
+
+
+	@Override
+	public ArrayList<Position> getMazeSolution(String mazeName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+
+	@Override
+	public Object getUserCommand(String command) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+
+	@Override
+	public void saveToZip() {
+		// TODO Auto-generated method stub
+
+	}
+
+
+
+	@Override
+	public void loadFromZip() {
+		// TODO Auto-generated method stub
+
+	}
+
+
+
+	@Override
+	public Position getPositionFromHash(String mazeName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+
+	@Override
+	public void setProperties(Properties properties) {
+		// TODO Auto-generated method stub
+
+	}
+
+
+
+	@Override
+	public Properties getProperties() {
+
+		return null;
 	}
 
 }

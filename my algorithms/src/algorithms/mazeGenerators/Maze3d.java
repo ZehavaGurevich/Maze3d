@@ -1,13 +1,14 @@
 package algorithms.mazeGenerators;
 
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Random;
 
 //This class represent the maze3d , realize all the function to build a maze3d
-public class Maze3d 
+@SuppressWarnings("serial")
+public class Maze3d implements Serializable
 {
 	//parameters
 	private Position p;	

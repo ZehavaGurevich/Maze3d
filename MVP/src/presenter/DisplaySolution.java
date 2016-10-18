@@ -15,7 +15,7 @@ public class DisplaySolution extends AbstractCommand
 				
 
 		else{
-			this.p.getM().ModelDisplay(params);
+			this.p.getM().ModelDisplaySolution(params);
 		}
 
 		

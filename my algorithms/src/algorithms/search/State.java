@@ -1,6 +1,9 @@
 package algorithms.search;
 
-public class State<T> 
+import java.io.Serializable;
+
+@SuppressWarnings("serial")
+public class State<T> implements Serializable
 {
 
 	private T state;

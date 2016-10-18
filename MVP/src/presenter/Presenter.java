@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
 
-
 import model.Model;
 import view.View;
 
@@ -36,7 +35,10 @@ public class Presenter implements Observer
 		this.commands.put("loadMaze", new LoadMaze(this));
 		this.commands.put("solve", new Solve(this));
 		this.commands.put("displaySolution", new DisplaySolution(this));
-		this.commands.put("exit",new Exit(this));	
+		this.commands.put("exit",new Exit(this));
+		//!!!!!!
+		this.commands.put("moveUp",new MoveUp(m,v));
+		//!!!!!!
 	}
 
 
@@ -74,11 +76,23 @@ public class Presenter implements Observer
 		}
 		else if(o instanceof Model)
 		{
+			if(arg.toString().equals("maze is ready"))
+			{
+				System.out.println("zehava");
+				this.getM().ModelDisplay("m");
+			}
+			
 			if(arg instanceof String)
 			{
-				this.getV().ViewPrintMsg((String) arg);
+				this.getV().ViewPrintMsg((String) arg);		
 				
 			}
+			
+			if(arg instanceof byte[])
+			{
+				this.getV().ViewDisplayAllMaze((byte[]) arg);
+			}
+				
 
 		}
 

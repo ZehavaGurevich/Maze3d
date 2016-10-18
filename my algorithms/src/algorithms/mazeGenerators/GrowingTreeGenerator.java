@@ -188,6 +188,8 @@ public class GrowingTreeGenerator extends Generator
 
 		return maze;
 	}
+	
+
 
 	/**
 	 * Random directions.

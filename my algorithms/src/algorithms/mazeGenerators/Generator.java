@@ -1,7 +1,6 @@
 
 package algorithms.mazeGenerators;
 
-import java.util.ArrayList;
 /**
  * The Class Generator.
  */
